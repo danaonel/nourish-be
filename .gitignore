@@ -1,0 +1,11 @@
+target/
+*.class
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+.DS_Store
+.idea/
+*.iml
+
+# Local secrets — never commit. Use .env.example as the template.
+.env

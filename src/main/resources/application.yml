@@ -1,0 +1,79 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: nourish-backend
+  # Exclude Mongo auto-config by default so the app boots with the in-memory
+  # store and no database. The `mongo` profile below re-enables it.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+  mvc:
+    # Turn unmatched paths into a 404 (via NoHandlerFoundException) instead of
+    # letting them fall through to the generic 500 handler.
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # AWS Cognito user pool (nourish, us-west-1_7xcWXlLGK, region us-west-1).
+          # The issuer exposes the signing keys at /.well-known/jwks.json, which
+          # Spring uses to verify every incoming access token's signature.
+          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-west-1.amazonaws.com/us-west-1_7xcWXlLGK}
+          jwk-set-uri: ${COGNITO_JWKS_URI:https://cognito-idp.us-west-1.amazonaws.com/us-west-1_7xcWXlLGK/.well-known/jwks.json}
+
+# CORS: the PWA frontend deploys separately, so allow its origin explicitly.
+nourish:
+  cors:
+    allowed-origins: ${FRONTEND_ORIGINS:http://localhost:3000}
+  security:
+    # When false, JWT auth is bypassed and identity comes from the X-User-Id
+    # header (local dev only). Keep TRUE for any real / multi-user deployment.
+    enabled: ${SECURITY_ENABLED:true}
+    # Optional: if set, incoming tokens must carry this audience/client id.
+    expected-client-id: ${COGNITO_CLIENT_ID:}
+  ai:
+    # If ANTHROPIC_API_KEY is set the AI Orchestration service will call the
+    # provider; otherwise it falls back to a deterministic local planner so the
+    # app is fully functional offline / without a key.
+    anthropic-api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-3-5-sonnet-latest}
+
+# OpenAPI / Swagger UI (springdoc).
+#   Swagger UI:   http://localhost:8080/swagger-ui.html
+#   OpenAPI JSON: http://localhost:8080/v3/api-docs
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    app.nourish: INFO
+
+---
+# Activate with: SPRING_PROFILES_ACTIVE=mongo (or --spring.profiles.active=mongo)
+# Persists every user's data in MongoDB instead of memory.
+spring:
+  config:
+    activate:
+      on-profile: mongo
+  # Re-enable Mongo auto-config for this profile (override the default exclude).
+  autoconfigure:
+    exclude:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/nourish}
